@@ -29,8 +29,23 @@ Following inductive biases and scientific priors derived from the scientific met
 the process of scientific reasoning and hypothesis generation is broken down into sub-tasks. Individual,
 specialized agents, each equipped with customized instruction prompts, are designed to execute these
 sub-tasks. These agents operate as workers coordinated by the Supervisor agent.
+In summary, the Generation agent curates an initial list of research hypotheses satisfying a research goal.
+These are then reviewed by the Reflection agent and evaluated in a tournament by the Ranking agent. The
+Evolution, Proximity, and Meta-review agents operate on the tournament state to help improve the quality of
+the system outputs.
 
-### Generation agent. 
+### Supervisor agent
+The Supervisor agent’s seamless orchestration of these specialized agents enables the development of valid,
+novel, and testable hypotheses and research plans tailored to the input research goal.
+The Supervisor agent periodically computes and writes to the context memory, a comprehensive suite of
+statistics, including the number of hypotheses generated and requiring review, and the progress of the
+tournament. These statistics also include analyses of the effectiveness of different hypothesis generation
+methodologies (e.g., generating new ideas via the Generation agent vs. improving existing ideas via the
+Evolution agent). Based on these statistics, the Supervisor agent then orchestrates subsequent system
+operations, i.e., generating new hypotheses, reviews, tournaments, and improvements to existing hypotheses,
+by strategically weighting and sampling the specialized agents for execution via the worker process
+
+### Generation agent
 The agent initiates the research process by generating the initial focus areas,
 iteratively extending them and generating a set of initial hypotheses and proposals that address the
 research goal. This involves exploring relevant literature using web search, synthesizing existing findings
