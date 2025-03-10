@@ -30,6 +30,42 @@ the process of scientific reasoning and hypothesis generation is broken down int
 specialized agents, each equipped with customized instruction prompts, are designed to execute these
 sub-tasks. These agents operate as workers coordinated by the Supervisor agent.
 
+### Generation agent. 
+The agent initiates the research process by generating the initial focus areas,
+iteratively extending them and generating a set of initial hypotheses and proposals that address the
+research goal. This involves exploring relevant literature using web search, synthesizing existing findings
+into novel directions, and engaging in simulated scientific debates for iterative improvement.
+
+### Reflection agent
+This agent simulates the role of a scientific peer reviewer, critically examining the
+correctness, quality, and novelty of the generated hypotheses and research proposals. Furthermore, it
+evaluates the potential of each hypothesis to provide an improved explanation for existing research
+observations (identified via literature search and review), particularly those that may be under explained.
+
+### Ranking agent
+An important abstraction in the co-scientist system is the notion of a tournament
+where different research proposals are evaluated and ranked enabling iterative improvements. The
+Ranking agent employs and orchestrates an Elo-based tournament [61] to assess and prioritize the
+generated hypotheses at any given time. This involves pairwise comparisons, facilitated by simulated
+scientific debates, which allow for a nuanced evaluation of the relative merits of each proposal.
+
+### Proximity agent
+This agent asynchronously computes a proximity graph for generated hypotheses,
+enabling clustering of similar ideas, de-duplication, and efficient exploration of the hypothesis landscape.
+
+### Evolution agent
+The co-scientist’s iterative improvement capability relies heavily on this agent, which
+continuously refines the top-ranked hypotheses emerging from the tournament. Its refinement strategies
+include synthesizing existing ideas, using analogies, leveraging literature for supporting details, exploring
+unconventional reasoning, and simplifying concepts for clarity.
+
+### Meta-review agent
+This agent also enables the co-scientist’s continuous improvement by synthesizing
+insights from all reviews, identifying recurring patterns in tournament debates, and using these findings
+to optimize other agents’ performance in subsequent iterations. This also enhances the quality and
+relevance of generated hypotheses and reviews in subsequent iterations. The agent also synthesizes
+top-ranked hypotheses and reviews into a comprehensive research overview for review by the scientist
+
 ## Context memory
 In order to enable iterative computation and scientific reasoning over long time
 horizons, the co-scientist uses a persistent context memory to store and retrieve states of the agents and
