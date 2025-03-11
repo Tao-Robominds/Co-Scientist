@@ -1,0 +1,12 @@
+pytest
+pytest-asyncio
+pytest-mock
+python-dateutil
+python-dotenv
+openai
+dataclasses
+fastapi
+llama_parse
+uvicorn
+uvloop
+
