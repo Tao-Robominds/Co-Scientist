@@ -132,6 +132,17 @@ Provide a brief explanation of your reasoning, followed by a prioritized list of
         """
         Parse the LLM response to extract the task queue.
         """
+        # Available tasks - ensure these match the mapping in route_next_task
+        valid_tasks = [
+            "generation",    # Maps to run_generation_agent
+            "reflection",    # Maps to run_reflection_agent
+            "ranking",       # Maps to run_ranking_agent
+            "evolution",     # Maps to run_evolution_agent
+            "proximity",     # Maps to run_proximity_agent
+            "meta_review",   # Maps to run_meta_review_agent
+            "supervisor"     # Maps to run_supervisor
+        ]
+        
         # Default task queue if parsing fails
         default_queue = ["generation", "reflection", "ranking"]
         
@@ -171,7 +182,8 @@ Provide a brief explanation of your reasoning, followed by a prioritized list of
                 else:
                     tasks = ["proximity", "evolution", "reflection", "ranking"]
         
-        # Ensure the task queue isn't empty
+        # Ensure the task queue isn't empty and only contains valid tasks
+        tasks = [task for task in tasks if task in valid_tasks]
         if not tasks:
             tasks = default_queue
         
