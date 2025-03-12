@@ -41,6 +41,15 @@ def run_supervisor(state: Dict[str, Any], config: RunnableConfig):
     """
     Supervisor agent that manages the workflow, prioritizes tasks, and allocates resources.
     """
+    # Initialize any missing fields with default values
+    state.setdefault("hypotheses", [])
+    state.setdefault("reviews", [])
+    state.setdefault("tournament_state", {"rankings": {}})
+    state.setdefault("proximity_graph", {"edges": []})
+    state.setdefault("context_memory", {})
+    state.setdefault("task_queue", [])
+    state.setdefault("iteration", 0)
+    
     messages = state["messages"]
     research_goal = state.get("research_goal", "")
     context_memory = state.get("context_memory", {})
@@ -52,6 +61,9 @@ def run_supervisor(state: Dict[str, Any], config: RunnableConfig):
             if isinstance(msg, HumanMessage):
                 research_goal = msg.content
                 break
+        
+        # Update research goal in state
+        state["research_goal"] = research_goal
     
     # Create the supervisor agent
     agent = SupervisorAgent(
@@ -289,30 +301,33 @@ def route_next_task(state: Dict[str, Any], config: RunnableConfig) -> str:
             state["current_task"] = current_task
             state["task_queue"] = task_queue[1:]  # Remove the first task
     
-    # Route based on current task
-    if current_task == "generation":
-        return "run_generation_agent"
-    elif current_task == "reflection":
-        return "run_reflection_agent"
-    elif current_task == "ranking":
-        return "run_ranking_agent"
-    elif current_task == "evolution":
-        return "run_evolution_agent"
-    elif current_task == "proximity":
-        return "run_proximity_agent"
-    elif current_task == "meta_review":
-        return "run_meta_review_agent"
-    elif current_task == "supervisor":
-        return "run_supervisor"
-    elif current_task == "end":
-        return END
-    else:
-        # Default to supervisor if task is unknown
-        return "run_supervisor"
+    # Map task names to node names
+    task_to_node = {
+        "generation": "run_generation_agent",
+        "reflection": "run_reflection_agent",
+        "ranking": "run_ranking_agent",
+        "evolution": "run_evolution_agent",
+        "proximity": "run_proximity_agent",
+        "meta_review": "run_meta_review_agent",
+        "supervisor": "run_supervisor",
+        "end": END,
+        # Also include direct node names for backward compatibility
+        "run_generation_agent": "run_generation_agent",
+        "run_reflection_agent": "run_reflection_agent",
+        "run_ranking_agent": "run_ranking_agent",
+        "run_evolution_agent": "run_evolution_agent",
+        "run_proximity_agent": "run_proximity_agent",
+        "run_meta_review_agent": "run_meta_review_agent",
+        "run_supervisor": "run_supervisor"
+    }
+    
+    # Return the appropriate node name or default to supervisor
+    return task_to_node.get(current_task, "run_supervisor")
 
 def get_initial_state(query: str = "Research goal: Develop novel methods for carbon capture and sequestration."):
     """
-    Initialize the state with the research goal.
+    Initialize the state with the research goal only.
+    Other fields will be initialized as needed by the agents.
     """
     return {
         "messages": [
@@ -320,14 +335,8 @@ def get_initial_state(query: str = "Research goal: Develop novel methods for car
             HumanMessage(content=query)
         ],
         "research_goal": query,
-        "hypotheses": [],
-        "reviews": [],
-        "tournament_state": {"rankings": {}},
-        "proximity_graph": {"edges": []},
-        "context_memory": {},
         "current_task": "",
         "task_queue": ["supervisor"],  # Start with supervisor
-        "iteration": 0
     }
 
 # Build the graph
@@ -457,4 +466,11 @@ workflow.add_conditional_edges(
 )
 
 # Compile the graph
-graph = workflow.compile() 
+graph = workflow.compile()
+
+# Define entry point for our workflow
+def run(query: str = "Research goal: Develop novel methods for carbon capture and sequestration."):
+    """Run the Co-Scientist workflow with the given research goal."""
+    config = {"recursion_limit": 50}
+    initial_state = get_initial_state(query)
+    return graph.invoke(initial_state, config) 
