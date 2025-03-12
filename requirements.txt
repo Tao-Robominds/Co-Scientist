@@ -10,3 +10,12 @@ llama_parse
 uvicorn
 uvloop
 
+langchain-community
+langchain-core
+langchain-ollama
+langchain-openai
+langgraph
+langgraph-checkpoint-sqlite
+langgraph-cli
+langgraph-sdk
+langsmith
