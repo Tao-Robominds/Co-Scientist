@@ -7,6 +7,12 @@ from agents import RawResponsesStreamEvent
 
 load_dotenv()
 
+"""
+Co-Scientist System Implementation
+
+This implements the Co-Scientist system described in the README, using the agents-as-tools pattern.
+The Supervisor agent orchestrates specialized agents to generate, evaluate, and refine scientific hypotheses.
+"""
 
 # Define specialized agents
 generation_agent = Agent(
@@ -18,6 +24,18 @@ generation_agent = Agent(
         "debates for iterative improvement. Return a list of innovative hypotheses related to the research goal."
     ),
     handoff_description="Generates initial hypotheses for research goals",
+)
+
+# Create a specialized agent for hypothesis selection
+hypothesis_selector_agent = Agent(
+    name="hypothesis_selector_agent",
+    instructions=(
+        "You are a Hypothesis Selector agent that evaluates multiple sets of hypotheses and selects the most "
+        "promising ones. Review all provided hypotheses and select the most promising, diverse, and innovative "
+        "candidates. Provide a consolidated list of the strongest and most diverse hypotheses, and explain why "
+        "you selected each one. Aim to select 3-5 hypotheses that together represent the strongest research directions."
+    ),
+    handoff_description="Selects the most promising hypotheses from multiple generated sets",
 )
 
 reflection_agent = Agent(
@@ -70,7 +88,7 @@ meta_review_agent = Agent(
     handoff_description="Synthesizes insights and creates research overviews",
 )
 
-# Supervisor agent that orchestrates other agents as tools
+# Supervisor agent with parallel hypothesis generation capability
 supervisor_agent = Agent(
     name="supervisor_agent",
     instructions=(
@@ -78,15 +96,20 @@ supervisor_agent = Agent(
         "to generate, evaluate, and refine scientific hypotheses. Based on the research goal, you should:"
         "\n1. Parse the research goal and design a research plan"
         "\n2. Strategically call specialized agents as tools when needed"
-        "\n3. Track progress and maintain statistics on hypothesis generation and evaluation"
-        "\n4. Guide the iterative improvement of hypotheses"
-        "\n5. Synthesize final results into a comprehensive research overview"
+        "\n3. Generate multiple sets of hypotheses in parallel and select the most promising ones"
+        "\n4. Track progress and maintain statistics on hypothesis generation and evaluation"
+        "\n5. Guide the iterative improvement of hypotheses"
+        "\n6. Synthesize final results into a comprehensive research overview"
         "\nYou should always use your tools rather than attempting to perform their functions yourself."
     ),
     tools=[
         generation_agent.as_tool(
             tool_name="generate_hypotheses",
             tool_description="Generate initial hypotheses for the research goal",
+        ),
+        hypothesis_selector_agent.as_tool(
+            tool_name="select_hypotheses",
+            tool_description="Select the most promising hypotheses from multiple sets",
         ),
         reflection_agent.as_tool(
             tool_name="review_hypotheses",
@@ -111,16 +134,51 @@ supervisor_agent = Agent(
     ],
 )
 
+async def generate_hypotheses_in_parallel(research_goal):
+    """Generate three sets of hypotheses in parallel"""
+    print("\n--- Generating hypotheses in parallel ---\n")
+    
+    hypothesis_results = await asyncio.gather(
+        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #1: Generate innovative and diverse hypotheses."),
+        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #2: Focus on potentially transformative hypotheses."),
+        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #3: Consider unconventional approaches to the research goal.")
+    )
+    
+    # Extract outputs from each generation
+    hypothesis_sets = []
+    for i, result in enumerate(hypothesis_results, 1):
+        hypotheses = ItemHelpers.text_message_outputs(result.new_items)
+        hypothesis_sets.append(f"Hypothesis Set #{i}:\n{hypotheses}")
+    
+    # Join the sets with separators
+    all_hypotheses = "\n\n".join(hypothesis_sets)
+    
+    # Select the best hypotheses using the selector agent
+    selection_result = await Runner.run(
+        hypothesis_selector_agent,
+        f"Research Goal: {research_goal}\n\nGenerated Hypotheses:\n{all_hypotheses}\n\nPlease select and consolidate the most promising hypotheses."
+    )
+    
+    return selection_result.final_output
+
 async def main():
     # Get research goal from user
     research_goal = input("Enter your scientific research goal: ")
     
     # Run the entire orchestration in a single trace
     with trace("Co-Scientist workflow"):
+        # Always generate hypotheses in parallel
+        print("\nGenerating hypotheses in parallel...\n")
+        selected_hypotheses = await generate_hypotheses_in_parallel(research_goal)
+        print(f"\n--- Selected Hypotheses ---\n{selected_hypotheses}\n")
+        
+        # Pass the selected hypotheses to the supervisor for further processing
+        research_input = f"Research Goal: {research_goal}\n\nSelected Hypotheses:\n{selected_hypotheses}\n\nPlease continue the research process with these hypotheses."
+        
         print("\nSupervisor agent starting orchestration process...\n")
         
         # Use streaming instead of waiting for complete results
-        result = Runner.run_streamed(supervisor_agent, research_goal)
+        result = Runner.run_streamed(supervisor_agent, research_input)
         
         # Process and display results as they stream in
         current_agent = "supervisor_agent"
