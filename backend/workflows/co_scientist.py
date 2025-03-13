@@ -3,7 +3,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Literal
 
-from agents import Agent, ItemHelpers, MessageOutputItem, Runner, trace, TResponseInputItem
+from agents import Agent, ItemHelpers, MessageOutputItem, Runner, trace, TResponseInputItem, WebSearchTool
 from openai.types.responses import ResponseContentPartDoneEvent, ResponseTextDeltaEvent
 from agents import RawResponsesStreamEvent
 
@@ -24,8 +24,12 @@ generation_agent = Agent(
         "extending them, and generating hypotheses that address the research goal. Explore relevant literature "
         "using web search, synthesize existing findings into novel directions, and engage in simulated scientific "
         "debates for iterative improvement. Return a list of innovative hypotheses related to the research goal."
+        "\n\nWhen generating hypotheses, first search the web for the latest research and findings related to the "
+        "research goal. Use these search results to inform your hypothesis generation, ensuring they reflect "
+        "current scientific understanding and identify potential gaps in existing research."
     ),
     handoff_description="Generates initial hypotheses for research goals",
+    tools=[WebSearchTool()],
 )
 
 # Create a specialized agent for hypothesis selection
@@ -46,10 +50,14 @@ reflection_agent = Agent(
         "You are a Reflection agent that acts as a scientific peer reviewer. Critically examine the correctness, "
         "quality, and novelty of hypotheses and research proposals. Evaluate each hypothesis's potential to provide "
         "improved explanations for existing research observations. Provide detailed and constructive feedback."
+        "\n\nUse web search to find recent publications, preprints, and scientific discussions related to the "
+        "hypotheses. Use this information to assess the currency, novelty, and scientific merit of each hypothesis."
         "\n\nIf provided with feedback about active/current research areas, focus on improving hypotheses to "
         "align with cutting-edge research and eliminate outdated lines of inquiry."
+        "\n\nWhen suggesting improvements, cite specific papers or research findings from your web searches."
     ),
     handoff_description="Reviews and provides feedback on hypotheses",
+    tools=[WebSearchTool()],
 )
 
 ranking_agent = Agent(
@@ -107,14 +115,18 @@ hypothesis_evaluator = Agent[None](
         "You are a Hypothesis Evaluator agent that assesses whether proposed hypotheses are in active, "
         "current research areas. For each hypothesis, determine if it represents a field with ongoing active "
         "research or if it's an outdated or settled area of inquiry."
+        "\n\nUse web search to find the latest research papers and scientific discussions related to each hypothesis. "
+        "This will help you accurately determine if a research area is currently active."
         "\n\nProvide specific feedback on which hypotheses are in active research areas and which are not. "
         "Be precise about why a hypothesis might be outdated or why it represents cutting-edge research. "
         "\n\nClassify your evaluation as 'all_active' only if ALL hypotheses represent current active research. "
         "Otherwise, classify as 'needs_refinement' and provide detailed feedback on what needs to change."
         "\n\nEarly iterations should typically be classified as 'needs_refinement' to encourage exploration of "
         "more recent research directions."
+        "\n\nInclude citations to recent papers or research when providing feedback on hypothesis currency."
     ),
     output_type=HypothesisEvaluation,
+    tools=[WebSearchTool()],
 )
 
 # Supervisor agent with parallel hypothesis generation capability
@@ -214,9 +226,9 @@ async def generate_hypotheses_in_parallel(research_goal):
     print("\n--- Generating hypotheses in parallel ---\n")
     
     hypothesis_results = await asyncio.gather(
-        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #1: Generate innovative and diverse hypotheses."),
-        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #2: Focus on potentially transformative hypotheses."),
-        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #3: Consider unconventional approaches to the research goal.")
+        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #1: Generate innovative and diverse hypotheses. First, search the web for recent research related to this goal to inform your hypotheses."),
+        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #2: Focus on potentially transformative hypotheses. Use web search to find cutting-edge research in this area before generating your hypotheses."),
+        Runner.run(generation_agent, f"Research Goal: {research_goal}\nGeneration Set #3: Consider unconventional approaches to the research goal. Search the web for emerging or cross-disciplinary approaches to this research area.")
     )
     
     # Extract outputs from each generation
