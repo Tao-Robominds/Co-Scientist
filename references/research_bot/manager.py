@@ -2,16 +2,25 @@ from __future__ import annotations
 
 import asyncio
 import time
+import sys
+import os
+import uuid
+
+# Make sure we insert at the beginning to prioritize this path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+# Now we use absolute imports
+from agents import Runner, trace  # Modify this path if agents is in a different location
 
 from rich.console import Console
 
-from agents import Runner, custom_span, gen_trace_id, trace
+from references.research_bot.research_agents.planner_agent import WebSearchItem, WebSearchPlan, planner_agent
+from references.research_bot.research_agents.search_agent import search_agent
+from references.research_bot.research_agents.writer_agent import ReportData, writer_agent
+from references.research_bot.printer import Printer
 
-from .agents.planner_agent import WebSearchItem, WebSearchPlan, planner_agent
-from .agents.search_agent import search_agent
-from .agents.writer_agent import ReportData, writer_agent
-from .printer import Printer
-
+# Add function to generate trace IDs
+def gen_trace_id():
+    return f"trace_{uuid.uuid4()}"
 
 class ResearchManager:
     def __init__(self):
@@ -63,7 +72,7 @@ class ResearchManager:
         return result.final_output_as(WebSearchPlan)
 
     async def _perform_searches(self, search_plan: WebSearchPlan) -> list[str]:
-        with custom_span("Search the web"):
+        with trace("Search the web"):
             self.printer.update_item("searching", "Searching...")
             num_completed = 0
             tasks = [asyncio.create_task(self._search(item)) for item in search_plan.searches]

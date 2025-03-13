@@ -1,6 +1,12 @@
 import asyncio
+import sys
+import os
 
-from .manager import ResearchManager
+# Add project root to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
+# Use direct import since it's in the same directory
+from manager import ResearchManager
 
 
 async def main() -> None:
