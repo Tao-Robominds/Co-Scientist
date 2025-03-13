@@ -11,9 +11,6 @@ load_dotenv()
 
 """
 Co-Scientist System Implementation
-
-This implements the Co-Scientist system described in the README, using the agents-as-tools pattern.
-The Supervisor agent orchestrates specialized agents to generate, evaluate, and refine scientific hypotheses.
 """
 
 # Define specialized agents
