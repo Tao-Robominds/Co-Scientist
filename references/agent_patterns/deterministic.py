@@ -4,6 +4,9 @@ from pydantic import BaseModel
 
 from agents import Agent, Runner, trace
 
+from dotenv import load_dotenv
+load_dotenv()
+
 """
 This example demonstrates a deterministic flow, where each step is performed by an agent.
 1. The first agent generates a story outline

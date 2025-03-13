@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 import asyncio
 
 from agents import Agent, ItemHelpers, MessageOutputItem, Runner, trace
+from openai.types.responses import ResponseContentPartDoneEvent, ResponseTextDeltaEvent
+from agents import RawResponsesStreamEvent
 
 load_dotenv()
 
@@ -117,18 +119,33 @@ async def main():
     with trace("Co-Scientist workflow"):
         print("\nSupervisor agent starting orchestration process...\n")
         
-        # Pass research goal to supervisor agent
-        supervisor_result = await Runner.run(supervisor_agent, research_goal)
+        # Use streaming instead of waiting for complete results
+        result = Runner.run_streamed(supervisor_agent, research_goal)
         
-        # Display intermediate outputs from the various agents
-        for item in supervisor_result.new_items:
-            if isinstance(item, MessageOutputItem):
-                text = ItemHelpers.text_message_output(item)
-                if text:
-                    print(f"\n--- Intermediate output ---\n{text}\n")
+        # Process and display results as they stream in
+        current_agent = "supervisor_agent"
+        print(f"\n--- Now working: {current_agent} ---")
         
-        # Final output from the supervisor
-        print(f"\n=== Final Research Overview ===\n{supervisor_result.final_output}")
+        final_output = ""
+        async for event in result.stream_events():
+            # Display raw text as it's generated
+            if isinstance(event, RawResponsesStreamEvent):
+                data = event.data
+                if isinstance(data, ResponseTextDeltaEvent):
+                    print(data.delta, end="", flush=True)
+                    # Capture the final output as it's being streamed
+                    if current_agent == "supervisor_agent":
+                        final_output += data.delta
+                elif isinstance(data, ResponseContentPartDoneEvent):
+                    print("\n")
+            
+            # When an agent changes, announce it
+            if hasattr(event, 'agent_name') and event.agent_name != current_agent:
+                current_agent = event.agent_name
+                print(f"\n\n--- Now working: {current_agent} ---\n")
+        
+        # Display final research overview
+        print(f"\n\n=== Final Research Overview ===\n{final_output}")
 
 if __name__ == "__main__":
     asyncio.run(main())
